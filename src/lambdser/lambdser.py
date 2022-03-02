@@ -1,22 +1,28 @@
+import copy
 import marshal
 import pickle
 from types import LambdaType, FunctionType
-from typing import List, Tuple
-
-# todo register as pickler using copyreg?
-
-T_ = Tuple[bytes, List[bytes]]
+from typing import Callable
+import inspect
 
 
-def install():
-    # https://stackoverflow.com/q/2932742/18173142
-    # todo not working yet
-    import copyreg
-    def _dumps(lambda_ex):
-        pickle.dumps(dumps(lambda_ex))
+class LambdserPickler(pickle.Pickler):
+    def reducer_override(self, obj):
+        if is_lambda(obj):
+            arg = dumps(obj)
+            return loads, (arg,), None, None, None, None
+        else:
+            return NotImplemented
 
-    copyreg.pickle(LambdaType, _dumps)
-    pickle._Pickler.dispatch[LambdaType] = _dumps
+
+# def install():
+#     # https://stackoverflow.com/q/2932742/18173142
+#     # todo not working yet
+#     # todo the function provided to pickle must return the reduce signature.
+#     # https://docs.python.org/3/library/pickle.html#object.__reduce__
+#     import copyreg
+
+#     copyreg.pickle(LambdaType, reduce)
 
 
 def cell(value):
@@ -29,43 +35,72 @@ def cell(value):
     return (lambda x: lambda: x)(value).__closure__[0]
 
 
-def dumps(lambda_ex) -> T_:
+def dumps(lambda_ex, *, transfer_global=False) -> bytes:
     """
-    Returns a serialize able tuple of a lambda expression including its closures
+    Dumps the lambda expression to a byte string.
+    Can be used than to pickle further.
+    Uses marshall under the hood.
+    :param lambda_ex: Lambda expression
+    :param transfer_global: set true the global context of the lambda will be copied. Attention: can be harmfull
+    :return: bytes
+
     """
-    if isinstance(lambda_ex, LambdaType):
-        if lambda_ex.__closure__:
-            closures = [marshal.dumps(c.cell_contents) for c in lambda_ex.__closure__]
-        else:
-            closures = None
-        code = marshal.dumps(lambda_ex.__code__)
-        return code, closures
+    if is_lambda(lambda_ex):
+        return _dumps(lambda_ex, transfer_global)
     else:
-        raise TypeError(f"{LambdaType=} is not LambdaType")
+        raise TypeError(f"{LambdaType=} is not LambdaType. Lambdser only supports lambda.")
 
 
-def _loads(obj: T_, globals_):
-    byte_code, byte_closures = obj
-    code = marshal.loads(byte_code)
-    if byte_closures:
-        closures = tuple(cell(marshal.loads(c)) for c in byte_closures)
+def _dumps(lambda_ex, transfer_global=False):
+    if transfer_global:
+        func_globals = inspect.stack()[1].frame.f_globals
+        names = get_names(lambda_ex)
+        globals_ = {name: copy.copy(func_globals[name]) for name in names}
+    else:
+        globals_ = None
+
+    if has_closures(lambda_ex):
+        closures = [c.cell_contents for c in lambda_ex.__closure__]
     else:
         closures = None
-    return code, globals_, None, None, closures
+    # code = marshal.dumps(lambda_ex.__code__)
+    code = lambda_ex.__code__
+    return marshal.dumps((code, closures, globals_))
 
 
-def loads(serialized: T_, globals_=None) -> LambdaType:
+def loads(serialized: bytes) -> LambdaType:
     """
     Deserialize a lambda expression including its closures
     :param serialized: tuple
-    :param globals_: provide on module level.
     :return: LambdaType
 
     """
-    if not globals_:
-        # this may provide wrong context
-        globals_ = globals()
-    args = _loads(serialized, globals_)
+    # get context of callee
+    _globals = inspect.stack()[1].frame.f_globals
+    args = _loads(serialized, _globals)
     return FunctionType(*args)
 
+
+def _loads(obj: bytes, globals_):
+    code, closures, func_globals = marshal.loads(obj)
+    if closures:
+        closures = tuple(cell(c) for c in closures)
+    if func_globals:
+        globals_.pop(func_globals)
+    return code, globals_, None, None, closures
+
+
+def is_lambda(obj: Callable) -> bool:
+    if isinstance(obj, LambdaType):
+        return obj.__code__.co_name == "<lambda>"
+    else:
+        return False
+
+
+def has_closures(obj) -> bool:
+    return obj.__closure__
+
+
+def get_names(lambda_):
+    return lambda_.__code__.co_names
 

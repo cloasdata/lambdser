@@ -1,1 +1,1 @@
-from .lambdser import loads, dumps
+from .lambdser import dumps, loads, is_lambda

@@ -11,7 +11,6 @@ ser = lambdser.dumps(expression)
 s = pickle.dumps(ser)
 ser = pickle.loads(s)
 
-# using on module level we need to invoke the global to give the lambda the correct context
-expression = lambdser.loads(ser, globals_=globals())
+expression = lambdser.loads(ser)
 result2 = expression("4")
 assert result1 == result2

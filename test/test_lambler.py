@@ -1,3 +1,6 @@
+import io
+from types import LambdaType
+
 import pytest
 import pickle
 import dill
@@ -16,9 +19,14 @@ def lambda_closure():
 def lambda_no_closure():
     return lambda x: x + "works fine."
 
+global_test="."
+@pytest.fixture()
+def lambda_global_closure():
+    fine = "fine"
+    return lambda x: x + "works " + fine + global_test
 
 @pytest.mark.parametrize(
-    "lambdas", ["lambda_closure", "lambda_no_closure"]
+    "lambdas", ["lambda_global_closure","lambda_closure", "lambda_no_closure"]
 )
 class TestLambler:
     def test_dumps(self, lambdas, request):
@@ -56,3 +64,15 @@ class TestLambler:
         lambda_ = request.getfixturevalue(lambdas)
         bytes_ = dill.dumps(lambda_)
         benchmark(lambda: dill.loads(bytes_))
+
+    def test_lambdser_pickler(self, lambdas, request):
+        file = io.BytesIO()
+        p = lambdser.lambdser.LambdserPickler(file)
+        _lambda = lambda x: x + "2"
+        p.dump(_lambda)
+        del _lambda
+
+        _lambda = pickle.loads(file.getvalue())
+
+        assert isinstance(_lambda, LambdaType)
+        assert _lambda("4") == "42"
