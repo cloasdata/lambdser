@@ -1,18 +1,18 @@
 lambdser
 ========
-A lambda expression serializer. Can be used to make pickle eat lambdas with closures.
+A lambda expression serializer for python. Can be used to make pickle eat lambdas with closures.
 Typical use case serialize for multiprocessing. Using lambdser in front, lets eat multiproccessing
 the lambda expression.
 
 ## todo
 I did not find a way to register lambdser es pickler in the pickle module. It would be really usefull
-if somebody can help me.
+if somebody can help me. However, one can use the LambdserPickler class 
+to overwrite the default behaviour of pickle.Pickler (?) or use LamdserPickler as the one pickler. 
 
 
 ## usage
 ### Example 1: module namespace
-using it in module namespace. Important here is to provide the globals(), otherwise the lambda will spawn in the 
-wrong context.
+using it in module namespace.
 
     import pickle
     import lambdser
@@ -32,9 +32,7 @@ wrong context.
     assert result1 == result2
 
 ### Example 2: Using closure
-
 Make a proxy of what you want to spawn in a separate process.
-Whenever Im able to register lambdser at pickle this would not be necessary anymore.
 
     import lambdser
     import multiprocessing as mp
