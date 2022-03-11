@@ -24,7 +24,7 @@ def processor(*ser):
 def do_stuff():
     two = "2"
     ser = make_proxy("4", lambda x: x + two)
-    p = mp.Process(target=processor, args=ser).start()
+    mp.Process(target=processor, args=ser).start()
 
 
 if __name__ == "__main__":
