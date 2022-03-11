@@ -1,13 +1,25 @@
-lambdser
-========
+# lambdser
+
 A lambda expression serializer for python. Can be used to make pickle eat lambdas with closures.
-Typical use case serialize for multiprocessing. Using lambdser in front, lets eat multiproccessing
+
+A typical use case is serializing lambdas for multiprocessing. Using lambdser in front, let multiproccessing eat
 the lambda expression.
+
+## Install
+    pip install lambdser
+
+or install it from github
+    
+    pip install git+https://github.com/cloasdata/lambdser.git
+
+or just clone it
 
 ## todo
 I did not find a way to register lambdser es pickler in the pickle module. It would be really usefull
 if somebody can help me. However, one can use the LambdserPickler class 
-to overwrite the default behaviour of pickle.Pickler (?) or use LamdserPickler as the one pickler. 
+to overwrite the default behaviour of pickle.Pickler (?) or use LamdserPickler as the one pickler.
+
+I also did not test for particular edge cases. But feel free to contribute such tests.
 
 
 ## usage
